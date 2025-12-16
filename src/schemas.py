@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List
 
 from pydantic import BaseModel, StringConstraints, field_validator
 from pydantic.config import ConfigDict
@@ -47,3 +47,7 @@ class ProjectRead(BaseModel):
     project_id: int
     name: str
     description: str | None = None
+    techs: List[TechRead] = []
+
+class ProjectTechLink(BaseModel):
+    tech_ids: List[int]
