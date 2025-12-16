@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.models import Base
+
 SQLALCHEMY_DATABASE_URL = 'sqlite:///database.db'
 
 engine = create_engine(
@@ -10,6 +12,8 @@ engine = create_engine(
 )
 
 Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = Session()
