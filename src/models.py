@@ -13,13 +13,13 @@ project_techs = Table(
     'project_techs',
     Base.metadata,
     Column('project_id', Integer, ForeignKey('projects.project_id'), primary_key=True),
-    Column('tech_id', Integer, ForeignKey('techs.techs_id'), primary_key=True)
+    Column('tech_id', Integer, ForeignKey('techs.tech_id'), primary_key=True)
 )
 
 class Tech(Base):
     __tablename__ = 'techs'
 
-    techs_id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    tech_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     description: Mapped[Optional[str]]
 
