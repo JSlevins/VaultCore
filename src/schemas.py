@@ -5,7 +5,7 @@ from pydantic.config import ConfigDict
 
 class BaseSchema(BaseModel):
 
-    @field_validator("description")
+    @field_validator("description", check_fields=False)
     @classmethod
     def empty_string_to_none(cls, v):
         if v is None:
