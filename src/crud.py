@@ -172,3 +172,19 @@ def delete_project(db: Session, project_id: int) -> None:
 
     db.delete(project)
     db.commit()
+
+def link_techs_to_project(db: Session, project_id: int, tech_ids: list[int]) -> Project | None:
+    project = db.get(Project, project_id)
+    if not project:
+        return None
+
+    techs = db.query(Tech).filter(Tech.techs_id.in_(tech_ids)).all()
+
+    for t in techs:
+        if t not in project.techs:
+            project.techs.append(t)
+
+    db.commit()
+    db.refresh(project)
+    return project  #type: ignore
+
