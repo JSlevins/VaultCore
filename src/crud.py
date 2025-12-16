@@ -1,4 +1,7 @@
 from sqlalchemy.orm import Session
+
+from typing import List
+
 from src.models import Tech, Project
 from src.schemas import TechCreate, TechUpdate
 from src.schemas import ProjectCreate, ProjectUpdate
@@ -37,6 +40,12 @@ def read_tech(db: Session, tech_id: int) -> Tech | None:
         Tech | None: The Tech object if found, otherwise None
     """
     return db.get(Tech, tech_id)
+
+def read_all_tech(db: Session) -> List[Tech]:
+    """
+    Get all Tech objects
+    """
+    return db.query(Tech).all()  #type: ignore
 
 def update_tech(db: Session, tech_id: int, data: TechUpdate) -> Tech | None:
     """
@@ -115,6 +124,12 @@ def read_project(db: Session, project_id: int) -> Project | None:
         Project | None: The Project object if found, otherwise None
     """
     return db.get(Project, project_id)
+
+def read_all_project(db: Session) -> List[Project]:
+    """
+    Get all Project objects.
+    """
+    return db.query(Project).all()  #type: ignore
 
 def update_project(db: Session, project_id: int, data: ProjectUpdate) -> Project | None:
     """
