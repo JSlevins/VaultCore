@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.crud import create_project, read_project, read_all_project, update_project, delete_project
+from src.crud import create_project, read_project, read_all_project, update_project, delete_project, link_techs_to_project
 from src.schemas import ProjectCreate, ProjectRead, ProjectUpdate
 from src.database import get_db
 
@@ -56,3 +56,10 @@ def delete_project_endpoint(project_id: int, db: Session = Depends(get_db)):
     """
     delete_project(db, project_id)
 
+# Link Techs to Project
+@router.put("/{project_id}/techs", response_model=ProjectRead, status_code=200)
+def link_techs_to_project_endpoint(project_id: int, tech_ids: list[int], db: Session = Depends(get_db)):
+    project = link_techs_to_project(db, project_id, tech_ids)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
