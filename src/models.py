@@ -38,11 +38,11 @@ class User(Base):
     __tablename__ = 'users'
 
     user_id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True)
-    hashed_password: Mapped[str] = mapped_column(String(100))
-    is_admin: Mapped[bool] = mapped_column(Boolean)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(250), nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    email: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=False)
 
-    # Those two actually for possible future functional extension
+    # Not currently used
     fullname: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    email: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
 

@@ -13,8 +13,10 @@ engine = create_engine(
 
 Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
+# Create database if not exists
 Base.metadata.create_all(bind=engine)
 
+# Session generator for Fast API
 def get_db():
     db = Session()
     try:
