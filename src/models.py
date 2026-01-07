@@ -1,6 +1,7 @@
 from typing import List
 from typing import Optional
-from sqlalchemy import String, ForeignKey, Table, Column, Integer, Boolean
+import enum
+from sqlalchemy import String, ForeignKey, Table, Column, Integer, Boolean, Enum
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -34,14 +35,23 @@ class Project(Base):
 
     techs: Mapped[List["Tech"]] = relationship(secondary=project_techs, back_populates='projects')
 
+class UserRole(enum.Enum):
+    ADMIN = 'admin'
+    EDITOR = 'editor'
+    USER = 'user'
+
 class User(Base):
     __tablename__ = 'users'
 
     user_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(250), nullable=False)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     email: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role"),
+        nullable=False,
+        default=UserRole.USER
+    )
 
     # Not currently used
     fullname: Mapped[str | None] = mapped_column(String(150), nullable=True)

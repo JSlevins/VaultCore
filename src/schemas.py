@@ -1,6 +1,6 @@
 from typing import Annotated, List
 
-from pydantic import BaseModel, StringConstraints, field_validator
+from pydantic import BaseModel, StringConstraints, field_validator, EmailStr
 from pydantic.config import ConfigDict
 
 class BaseSchema(BaseModel):
@@ -25,11 +25,11 @@ class TechUpdate(BaseSchema):
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
 class TechRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     tech_id: int
     name: str
     description: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Project model
@@ -42,12 +42,25 @@ class ProjectUpdate(BaseSchema):
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
 class ProjectRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     project_id: int
     name: str
     description: str | None = None
     techs: List[TechRead] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
 class ProjectTechLink(BaseModel):
     tech_ids: List[int]
+
+
+# User model
+class UserRegister(BaseSchema):
+    username: str
+    password: str
+    email: EmailStr
+
+class UserRead(BaseModel):
+    username: str
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
