@@ -1,8 +1,8 @@
-from datetime import datetime
 from typing import Annotated, List
 
 from pydantic import BaseModel, StringConstraints, field_validator, EmailStr
 from pydantic.config import ConfigDict
+
 
 class BaseSchema(BaseModel):
 
@@ -16,16 +16,19 @@ class BaseSchema(BaseModel):
             return v if v else None
         return v
 
+
 # Tech model
-class TechCreate(BaseSchema):
+class TechCreateSchema(BaseSchema):
     name: Annotated[str, StringConstraints(max_length=50)]
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class TechUpdate(BaseSchema):
+
+class TechUpdateSchema(BaseSchema):
     name: Annotated[str | None, StringConstraints(max_length=50)] = None
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class TechRead(BaseModel):
+
+class TechReadSchema(BaseModel):
     tech_id: int
     name: str
     description: str | None = None
@@ -34,49 +37,52 @@ class TechRead(BaseModel):
 
 
 # Project model
-class ProjectCreate(BaseSchema):
+class ProjectCreateSchema(BaseSchema):
     name: Annotated[str, StringConstraints(max_length=100)]
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class ProjectUpdate(BaseSchema):
+
+class ProjectUpdateSchema(BaseSchema):
     name: Annotated[str | None, StringConstraints(max_length=100)] = None
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class ProjectRead(BaseModel):
+
+class ProjectReadSchema(BaseModel):
     project_id: int
     name: str
     description: str | None = None
-    techs: List[TechRead] = []
+    techs: List[TechReadSchema] = []
 
     model_config = ConfigDict(from_attributes=True)
 
-class ProjectTechLink(BaseModel):
+
+class ProjectTechLinkSchema(BaseModel):
     tech_ids: List[int]
 
 
 # User model
-class UserRegister(BaseSchema):
+class UserRegisterSchema(BaseSchema):
     username: str
     password: str
     email: EmailStr
 
-class UserRead(BaseModel):
+
+class UserReadSchema(BaseModel):
     username: str
     email: EmailStr
 
-    model_config = ConfigDict(from_attributes=True)
 
-class UserLogin(BaseSchema):
+class UserLoginSchema(BaseSchema):
     username: str
     password: str
 
-# Refresh token model
+
+# Token models
+class TokenResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
 class RefreshTokenSchema(BaseModel):
-    id: int
-    user_id: int
-    token: str
-    created_at: datetime
-    expires_at: datetime
-    active: bool
-
-    model_config = ConfigDict(from_attributes=True)
+    refresh_token: str

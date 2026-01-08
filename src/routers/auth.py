@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.models import User, UserRole, RefreshToken
-from src.schemas import UserRegister, UserRead, UserLogin, RefreshTokenSchema
+from src.schemas import UserRegisterSchema, UserReadSchema, UserLoginSchema, RefreshTokenSchema, TokenResponseSchema
 from src.security import hash_password, verify_password, create_access_token, create_refresh_token
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
-def create_user(db: Session, user_data: UserRegister) -> User:
+def create_user(db: Session, user_data: UserRegisterSchema) -> User:
     # Check the uniqueness of a username and email
     if db.query(User).filter(User.username == user_data.username).first() is not None:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -31,8 +31,8 @@ def create_user(db: Session, user_data: UserRegister) -> User:
 
 
 # User Register (by User)
-@auth_router.post("/register", response_model=UserRead, status_code=201)
-def register_user(user_data: UserRegister, db: Session = Depends(get_db)) -> User:
+@auth_router.post("/register", response_model=UserReadSchema, status_code=201)
+def register_user(user_data: UserRegisterSchema, db: Session = Depends(get_db)) -> User:
     """
     Register a new user
     """
@@ -45,8 +45,8 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)) -> Use
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 3
 
-@auth_router.post("/login", response_model=UserLogin, status_code=200)
-def user_login(user_data: UserLogin, db: Session = Depends(get_db)) -> dict:
+@auth_router.post("/login", response_model=TokenResponseSchema, status_code=200)
+def user_login(user_data: UserLoginSchema, db: Session = Depends(get_db)) -> dict:
     """
     Authenticate a user and return access and refresh tokens.
 
@@ -85,12 +85,12 @@ def user_login(user_data: UserLogin, db: Session = Depends(get_db)) -> dict:
         "token_type": "bearer"
     }
 
-@auth_router.post("/refresh", response_model=RefreshTokenSchema, status_code=200)
-def refresh_access_token(token: str, db: Session = Depends(get_db)) -> dict:
+@auth_router.post("/refresh", response_model=TokenResponseSchema, status_code=200)
+def refresh_access_token(request: RefreshTokenSchema, db: Session = Depends(get_db)) -> dict:
     """
     Update access token using a valid refresh token.
     """
-    token_obj: RefreshToken | None = db.query(RefreshToken).filter(RefreshToken.token == token).first()
+    token_obj: RefreshToken | None = db.query(RefreshToken).filter(RefreshToken.token == request.refresh_token).first()
 
     if not token_obj:
         raise HTTPException(status_code=404, detail="Token not found")
