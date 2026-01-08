@@ -1,12 +1,12 @@
-from typing import List
+from datetime import timedelta, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.security import hash_password
-from src.models import User, UserRole
 from src.database import get_db
-from src.schemas import UserRegister, UserRead
+from src.models import User, UserRole, RefreshToken
+from src.schemas import UserRegister, UserRead, UserLogin, RefreshTokenSchema
+from src.security import hash_password, verify_password, create_access_token, create_refresh_token
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,9 +32,95 @@ def create_user(db: Session, user_data: UserRegister) -> User:
 
 # User Register (by User)
 @auth_router.post("/register", response_model=UserRead, status_code=201)
-def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
+def register_user(user_data: UserRegister, db: Session = Depends(get_db)) -> User:
     """
     Register a new user
     """
     user = create_user(db, user_data)
     return user
+
+
+# User Auth
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 3
+
+@auth_router.post("/login", response_model=UserLogin, status_code=200)
+def user_login(user_data: UserLogin, db: Session = Depends(get_db)) -> dict:
+    """
+    Authenticate a user and return access and refresh tokens.
+
+    Raises:
+        HTTPException: 404 if user not found, 400 if password is incorrect.
+
+    Returns:
+        dict: access_token (JWT), refresh_token (UUID), token_type ("bearer").
+    """
+    user: User|None = db.query(User).filter(User.username == user_data.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(user_data.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+
+    # Token generation
+    access_token = create_access_token(
+        user.user_id,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    # Refresh token generation
+    refresh_token_data = create_refresh_token(
+        user.user_id,
+        expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    refresh_token = RefreshToken(**refresh_token_data)
+    # Add refresh token to Db
+    db.add(refresh_token)
+    db.commit()
+    db.refresh(refresh_token)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token.token,
+        "token_type": "bearer"
+    }
+
+@auth_router.post("/refresh", response_model=RefreshTokenSchema, status_code=200)
+def refresh_access_token(token: str, db: Session = Depends(get_db)) -> dict:
+    """
+    Update access token using a valid refresh token.
+    """
+    token_obj: RefreshToken | None = db.query(RefreshToken).filter(RefreshToken.token == token).first()
+
+    if not token_obj:
+        raise HTTPException(status_code=404, detail="Token not found")
+    if not token_obj.active:
+        raise HTTPException(status_code=400, detail="Token is inactive")
+    if token_obj.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Token has expired")
+
+    #Create new token
+    access_token = create_access_token(
+        user_id = token_obj.user_id,
+        expires_delta = timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    #Deactivate old token
+    token_obj.active = False
+    db.add(token_obj)
+    db.commit()
+
+    #Create new refresh token
+    refresh_token_data = create_refresh_token(
+        user_id = token_obj.user_id,
+        expires_delta = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    refresh_token = RefreshToken(**refresh_token_data)
+    db.add(refresh_token)
+    db.commit()
+
+    return {
+        'access_token': access_token,
+        'refresh_token': refresh_token.token,
+        'token_type': 'bearer'
+    }
