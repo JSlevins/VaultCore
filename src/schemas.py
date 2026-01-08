@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, List
 
 from pydantic import BaseModel, StringConstraints, field_validator, EmailStr
@@ -62,5 +63,20 @@ class UserRegister(BaseSchema):
 class UserRead(BaseModel):
     username: str
     email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+class UserLogin(BaseSchema):
+    username: str
+    password: str
+
+# Refresh token model
+class RefreshTokenSchema(BaseModel):
+    id: int
+    user_id: int
+    token: str
+    created_at: datetime
+    expires_at: datetime
+    active: bool
 
     model_config = ConfigDict(from_attributes=True)
