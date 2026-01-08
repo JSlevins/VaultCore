@@ -1,7 +1,8 @@
 from typing import Annotated, List
 
-from pydantic import BaseModel, StringConstraints, field_validator
+from pydantic import BaseModel, StringConstraints, field_validator, EmailStr
 from pydantic.config import ConfigDict
+
 
 class BaseSchema(BaseModel):
 
@@ -15,39 +16,73 @@ class BaseSchema(BaseModel):
             return v if v else None
         return v
 
+
 # Tech model
-class TechCreate(BaseSchema):
+class TechCreateSchema(BaseSchema):
     name: Annotated[str, StringConstraints(max_length=50)]
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class TechUpdate(BaseSchema):
+
+class TechUpdateSchema(BaseSchema):
     name: Annotated[str | None, StringConstraints(max_length=50)] = None
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class TechRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
+class TechReadSchema(BaseModel):
     tech_id: int
     name: str
     description: str | None = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 # Project model
-class ProjectCreate(BaseSchema):
+class ProjectCreateSchema(BaseSchema):
     name: Annotated[str, StringConstraints(max_length=100)]
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class ProjectUpdate(BaseSchema):
+
+class ProjectUpdateSchema(BaseSchema):
     name: Annotated[str | None, StringConstraints(max_length=100)] = None
     description: Annotated[str | None, StringConstraints(max_length=1000)] = None
 
-class ProjectRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
+class ProjectReadSchema(BaseModel):
     project_id: int
     name: str
     description: str | None = None
-    techs: List[TechRead] = []
+    techs: List[TechReadSchema] = []
 
-class ProjectTechLink(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectTechLinkSchema(BaseModel):
     tech_ids: List[int]
+
+
+# User model
+class UserRegisterSchema(BaseSchema):
+    username: str
+    password: str
+    email: EmailStr
+
+
+class UserReadSchema(BaseModel):
+    username: str
+    email: EmailStr
+
+
+class UserLoginSchema(BaseSchema):
+    username: str
+    password: str
+
+
+# Token models
+class TokenResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+class RefreshTokenSchema(BaseModel):
+    refresh_token: str

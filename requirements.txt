@@ -3,3 +3,5 @@ pydantic>=2.12.5
 fastapi>=0.124
 uvicorn>=0.38
 bcrypt>=5.0.0
+pyjwt>=2.10.1
+python_dotenv>=1.2.1

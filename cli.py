@@ -1,12 +1,12 @@
 import sys
-from src.commands import create_admin
+from src.commands import create_admin, create_editor
 from src.database import Session
 
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: python cli.py <command> [<args>]")
-        print("Available commands: 'create-admin'")
+        print("Available commands: 'create-admin', 'create-editor'")
         return
 
     command = sys.argv[1]
@@ -15,6 +15,13 @@ def main():
         db = Session()
         try:
             create_admin(db)
+        finally:
+            db.close()
+
+    elif command == "create-editor":
+        db = Session()
+        try:
+            create_editor(db)
         finally:
             db.close()
 
