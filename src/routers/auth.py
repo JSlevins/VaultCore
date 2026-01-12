@@ -2,6 +2,7 @@ from datetime import timedelta, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.functions import user
 
 from src.database import get_db
 from src.models import User, UserRole, RefreshToken
@@ -9,13 +10,14 @@ from src.schemas import UserRegisterSchema, UserReadSchema, UserLoginSchema, Ref
 from src.security import hash_password, verify_password, create_access_token, create_refresh_token
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+FAKE_PASSWORD_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8M0Y2F9v4K4D1R5Jt3fY6G6Z0p6E9eW"  # for timing-hardening
 
 def create_user(db: Session, user_data: UserRegisterSchema) -> User:
     # Check the uniqueness of a username and email
     if db.query(User).filter(User.username == user_data.username).first() is not None:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=409, detail="Username already registered")
     if db.query(User).filter(User.email == user_data.email).first() is not None:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Email already registered")
 
     user = User(
         username=user_data.username,
@@ -57,10 +59,17 @@ def user_login(user_data: UserLoginSchema, db: Session = Depends(get_db)) -> dic
         dict: access_token (JWT), refresh_token (UUID), token_type ("bearer").
     """
     user: User|None = db.query(User).filter(User.username == user_data.username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not verify_password(user_data.password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Incorrect password")
+
+    # Timing-hardening
+    user_password = (
+        user.password_hash
+        if user
+        else FAKE_PASSWORD_HASH
+    )
+
+    # Authentication
+    if not verify_password(user_data.password, user_password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     # Token generation
     access_token = create_access_token(
