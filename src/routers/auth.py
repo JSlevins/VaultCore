@@ -6,11 +6,13 @@ from sqlalchemy.sql.functions import user
 
 from src.database import get_db
 from src.models import User, UserRole, RefreshToken
-from src.schemas import UserRegisterSchema, UserReadSchema, UserLoginSchema, RefreshTokenSchema, TokenResponseSchema
-from src.security import hash_password, verify_password, create_access_token, create_refresh_token
+from src.schemas import (UserRegisterSchema, UserReadSchema, UserLoginSchema, RefreshTokenSchema,
+                         TokenResponseSchema)
+from src.security import (hash_password, verify_password, create_access_token, create_refresh_token,
+                          validate_refresh_token, user_authentication)
 
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
-FAKE_PASSWORD_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8M0Y2F9v4K4D1R5Jt3fY6G6Z0p6E9eW"  # for timing-hardening
+auth_router = APIRouter(prefix="/auth", tags=["Auth"])
+
 
 def create_user(db: Session, user_data: UserRegisterSchema) -> User:
     # Check the uniqueness of a username and email
@@ -53,23 +55,12 @@ def user_login(user_data: UserLoginSchema, db: Session = Depends(get_db)) -> dic
     Authenticate a user and return access and refresh tokens.
 
     Raises:
-        HTTPException: 404 if user not found, 400 if password is incorrect.
+        HTTPException: 401 if username/password are incorrect.
 
     Returns:
         dict: access_token (JWT), refresh_token (UUID), token_type ("bearer").
     """
-    user: User|None = db.query(User).filter(User.username == user_data.username).first()
-
-    # Timing-hardening
-    user_password = (
-        user.password_hash
-        if user
-        else FAKE_PASSWORD_HASH
-    )
-
-    # Authentication
-    if not verify_password(user_data.password, user_password):
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    user = user_authentication(user_data, db)
 
     # Token generation
     access_token = create_access_token(
@@ -94,6 +85,7 @@ def user_login(user_data: UserLoginSchema, db: Session = Depends(get_db)) -> dic
         "token_type": "bearer"
     }
 
+
 @auth_router.post("/refresh", response_model=TokenResponseSchema, status_code=200)
 def refresh_access_token(request: RefreshTokenSchema, db: Session = Depends(get_db)) -> dict:
     """
@@ -101,12 +93,7 @@ def refresh_access_token(request: RefreshTokenSchema, db: Session = Depends(get_
     """
     token_obj: RefreshToken | None = db.query(RefreshToken).filter(RefreshToken.token == request.refresh_token).first()
 
-    if not token_obj:
-        raise HTTPException(status_code=404, detail="Token not found")
-    if not token_obj.active:
-        raise HTTPException(status_code=400, detail="Token is inactive")
-    if token_obj.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Token has expired")
+    token_obj: RefreshToken = validate_refresh_token(token_obj)
 
     #Create new token
     access_token = create_access_token(
@@ -117,7 +104,6 @@ def refresh_access_token(request: RefreshTokenSchema, db: Session = Depends(get_
     #Deactivate old token
     token_obj.active = False
     db.add(token_obj)
-    db.commit()
 
     #Create new refresh token
     refresh_token_data = create_refresh_token(
