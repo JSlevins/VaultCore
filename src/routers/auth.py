@@ -1,14 +1,13 @@
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.functions import user
 
 from src.database import get_db
 from src.models import User, UserRole, RefreshToken
 from src.schemas import (UserRegisterSchema, UserReadSchema, UserLoginSchema, RefreshTokenSchema,
                          TokenResponseSchema)
-from src.security import (hash_password, verify_password, create_access_token, create_refresh_token,
+from src.security import (hash_password, create_access_token, create_refresh_token,
                           validate_refresh_token, user_authentication)
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -21,17 +20,17 @@ def create_user(db: Session, user_data: UserRegisterSchema) -> User:
     if db.query(User).filter(User.email == user_data.email).first() is not None:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    user = User(
+    new_user = User(
         username=user_data.username,
         password_hash=hash_password(user_data.password),
         email=user_data.email,
         role=UserRole.USER
     )
 
-    db.add(user)
+    db.add(new_user)
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(new_user)
+    return new_user
 
 
 # User Register (by User)

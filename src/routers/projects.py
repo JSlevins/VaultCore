@@ -3,18 +3,24 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.crud import create_project, read_project, read_all_project, update_project, delete_project, link_techs_to_project
+from src.models import User, UserRole
+from src.crud import (create_project, read_project, read_all_project, update_project, delete_project,
+                      link_techs_to_project)
 from src.schemas import ProjectCreateSchema, ProjectReadSchema, ProjectUpdateSchema
 from src.database import get_db
+from src.security import get_current_user
 
 project_router = APIRouter(prefix="/projects", tags=["Projects"])
 
 # Create Project
 @project_router.post("/", response_model=ProjectReadSchema, status_code=201)
-def create_project_endpoint(data: ProjectCreateSchema, db: Session = Depends(get_db)):
+def create_project_endpoint(data: ProjectCreateSchema, db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_user)):
     """
     Create a new Project object.
     """
+    if not current_user.role in [UserRole.ADMIN, UserRole.EDITOR]:
+        raise HTTPException(status_code=403, detail="You are not allowed to create projects.")
     project = create_project(db, data)
     return project
 
@@ -39,10 +45,13 @@ def read_all_project_endpoint(db: Session = Depends(get_db)):
 
 # Update Project
 @project_router.patch("/{project_id}", response_model=ProjectReadSchema, status_code=200)
-def update_project_endpoint(project_id: int, data: ProjectUpdateSchema, db: Session = Depends(get_db)):
+def update_project_endpoint(project_id: int, data: ProjectUpdateSchema, db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_user)):
     """
     Update an existing Project object by ID.
     """
+    if not current_user.role in [UserRole.ADMIN, UserRole.EDITOR]:
+        raise HTTPException(status_code=403, detail="You are not allowed to update projects.")
     project = update_project(db, project_id, data)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -50,15 +59,21 @@ def update_project_endpoint(project_id: int, data: ProjectUpdateSchema, db: Sess
 
 # Delete Project
 @project_router.delete("/{project_id}", status_code=204)
-def delete_project_endpoint(project_id: int, db: Session = Depends(get_db)):
+def delete_project_endpoint(project_id: int, db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_user)):
     """
     Delete an existing Project object by ID.
     """
+    if not current_user.role in [UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="You are not allowed to delete projects.")
     delete_project(db, project_id)
 
 # Link Techs to Project
 @project_router.put("/{project_id}/techs", response_model=ProjectReadSchema, status_code=200)
-def link_techs_to_project_endpoint(project_id: int, tech_ids: list[int], db: Session = Depends(get_db)):
+def link_techs_to_project_endpoint(project_id: int, tech_ids: List[int], db: Session = Depends(get_db),
+                                   current_user: User = Depends(get_current_user)):
+    if not current_user.role in [UserRole.ADMIN, UserRole.EDITOR]:
+        raise HTTPException(status_code=403, detail="You are not allowed to update projects.")
     project = link_techs_to_project(db, project_id, tech_ids)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
