@@ -6,15 +6,22 @@ import bcrypt
 import jwt
 
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from database import Session
+from src.database import Session, get_db
 from src.models import RefreshToken, User
+
+
+bearer_scheme = HTTPBearer()
 
 # ENV
 load_dotenv()
-SECRET_TOKEN_KEY = os.getenv("JWT_SECRET_KEY")
+TOKEN_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not TOKEN_SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY not set")
 TOKEN_ALGORITHM = "HS256"
 FAKE_PASSWORD_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8M0Y2F9v4K4D1R5Jt3fY6G6Z0p6E9eW"  # for timing-hardening
+
 
 # Password handling
 def hash_password(password: str) -> str:
@@ -54,11 +61,11 @@ def create_access_token(user_id: int, expires_delta: timedelta = timedelta(minut
     Create JWT access token with user_id and expiration date.
     """
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "exp": datetime.now(timezone.utc) + expires_delta
     }
 
-    token = jwt.encode(payload, SECRET_TOKEN_KEY, algorithm=[TOKEN_ALGORITHM])
+    token = jwt.encode(payload, TOKEN_SECRET_KEY, algorithm=TOKEN_ALGORITHM)
     return token
 
 def create_refresh_token(user_id: int, expires_delta: timedelta = timedelta(days=3)) -> dict:
@@ -67,7 +74,7 @@ def create_refresh_token(user_id: int, expires_delta: timedelta = timedelta(days
     """
     now = datetime.now(timezone.utc)
     refresh_token = {
-        "user_id": user_id,
+        "user_id": str(user_id),
         "token": str(uuid.uuid4()),
         "created_at": now,
         "expires_at": now + expires_delta,
@@ -76,12 +83,13 @@ def create_refresh_token(user_id: int, expires_delta: timedelta = timedelta(days
 
     return refresh_token
 
-def validate_jwt_token(token: str) -> dict:
+def validate_jwt_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
     """
        Validate a JWT access token and return its payload.
     """
+    token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_TOKEN_KEY, algorithms=[TOKEN_ALGORITHM])
+        payload = jwt.decode(token, TOKEN_SECRET_KEY, algorithms=[TOKEN_ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Expired token")
     except jwt.InvalidTokenError:
@@ -93,12 +101,12 @@ def validate_jwt_token(token: str) -> dict:
 
     return payload
 
-def get_current_user(db: Session, payload: dict = Depends(validate_jwt_token)) -> User:
+def get_current_user(db: Session = Depends(get_db), payload: dict = Depends(validate_jwt_token)) -> User:
     """
     Retrieve the current user from the database using the JWT payload.
     """
     user_id = int(payload['sub'])
-    user: User | None = db.query(User).filter(User.user_id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user

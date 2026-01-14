@@ -52,12 +52,6 @@ REFRESH_TOKEN_EXPIRE_DAYS = 3
 def user_login(user_data: UserLoginSchema, db: Session = Depends(get_db)) -> dict:
     """
     Authenticate a user and return access and refresh tokens.
-
-    Raises:
-        HTTPException: 401 if username/password are incorrect.
-
-    Returns:
-        dict: access_token (JWT), refresh_token (UUID), token_type ("bearer").
     """
     user = user_authentication(user_data, db)
 

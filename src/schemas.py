@@ -1,6 +1,6 @@
 from typing import Annotated, List
 
-from pydantic import BaseModel, StringConstraints, field_validator, EmailStr
+from pydantic import BaseModel, StringConstraints, field_validator, EmailStr, Field
 from pydantic.config import ConfigDict
 
 
@@ -51,7 +51,7 @@ class ProjectReadSchema(BaseModel):
     project_id: int
     name: str
     description: str | None = None
-    techs: List[TechReadSchema] = []
+    techs: List[TechReadSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,7 +70,9 @@ class UserRegisterSchema(BaseSchema):
 class UserReadSchema(BaseModel):
     username: str
     email: EmailStr
+    role: str
 
+    model_config = ConfigDict(from_attributes=True)
 
 class UserLoginSchema(BaseSchema):
     username: str
